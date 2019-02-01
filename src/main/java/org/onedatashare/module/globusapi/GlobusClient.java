@@ -36,6 +36,10 @@ public class GlobusClient {
     String TRANSFER_URI = "/transfer";
     //@Value("${submission.uri}")
     String SUBMISSION_URI = "/submission_id";
+    //@Value("${endpoint_search.uri}")
+    String ENDPOINT_SEARCH_URI = "/endpoint_search";
+    //@Value("${endpoint_detail.uri}")
+    String ENDPOINT_DETAIL_URI = "/endpoint/{id}";
     //@Value("${redirect.uri}")
     String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
     //@Value("${client.id}")
@@ -129,6 +133,28 @@ public class GlobusClient {
                 .uri(SUBMISSION_URI)
                 .retrieve()
                 .bodyToMono(String.class);
+    }
+
+    public Mono<EndPoint> getEndPoint(String endPointId){
+
+        String uri = ENDPOINT_DETAIL_URI.replace("{id}",endPointId);
+        return webClient.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(EndPoint.class);
+
+    }
+
+    public Mono<EndPointList> getEndPointList(String filterScope, String offset, String limit){
+
+        return webClient.get()
+                .uri(builder -> builder.path(ENDPOINT_SEARCH_URI)
+                        .queryParam("filter_scope",filterScope)
+                        .queryParam("offset",offset)
+                        .queryParam("limit",limit)
+                        .build())
+                .retrieve()
+                .bodyToMono(EndPointList.class);
     }
 
 
