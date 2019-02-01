@@ -37,7 +37,7 @@ public class GlobusClient {
     //@Value("${submission.uri}")
     String SUBMISSION_URI = "/submission_id";
     //@Value("${redirect.uri}")
-    String REDIRECT_URI = "https://127.0.0.1:8080/api/stork/oauth";
+    String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
     //@Value("${client.id}")
     String CLIENT_ID = "6843af68-87f8-4341-bfc4-3db4b1e2d845";
     //@Value("${client.secret}")
