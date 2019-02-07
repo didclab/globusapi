@@ -40,6 +40,8 @@ public class GlobusClient {
     String ENDPOINT_SEARCH_URI = "/endpoint_search";
     //@Value("${endpoint_detail.uri}")
     String ENDPOINT_DETAIL_URI = "/endpoint/{id}";
+    //@Value("${endpoint_file_list.uri}")
+    String ENDPOINT_FILE_LIST_URI = "/endpoint/{id}/ls";
     //@Value("${redirect.uri}")
     String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
     //@Value("${client.id}")
@@ -97,17 +99,17 @@ public class GlobusClient {
                 .map(CustomTokenResponse::getAccessToken);
     }
 
-    public Mono<FileList> list(String path, Boolean showHidden, Integer limit, Integer offset, String orderBy,
+    public Mono<FileList> listFiles(String endPointId, String path, Boolean showHidden, Integer offset, Integer limit, String orderBy,
                                String filter) {
-        Map<String, Object> listRequestVariables = new HashMap<>();
-        listRequestVariables.put("path", path);
-        listRequestVariables.put("show_hidden", showHidden);
-        listRequestVariables.put("limit", limit);
-        listRequestVariables.put("offset", offset);
-        listRequestVariables.put("orderby", orderBy);
-        listRequestVariables.put("filter", filter);
+
+        String uri = ENDPOINT_FILE_LIST_URI.replace("{id}",endPointId);
         return webClient.get()
-                .uri(TRANSFER_URI, listRequestVariables)
+                .uri(builder -> builder.path(uri)
+                    .queryParam("path",path)
+                    .queryParam("show_hidden",String.valueOf(showHidden))
+                    .queryParam("limit", String.valueOf(limit))
+                    .queryParam("offset", String.valueOf(offset))
+                    .build())
                 .retrieve()
                 .bodyToMono(FileList.class);
     }
@@ -128,11 +130,11 @@ public class GlobusClient {
                 .bodyToMono(Result.class);
     }
 
-    public Mono<String> getJobSubmissionId() {
+    public Mono<Result> getJobSubmissionId() {
         return webClient.get()
                 .uri(SUBMISSION_URI)
                 .retrieve()
-                .bodyToMono(String.class);
+                .bodyToMono(Result.class);
     }
 
     public Mono<EndPoint> getEndPoint(String endPointId){
