@@ -80,7 +80,7 @@ public class GlobusClient {
         return Mono.just(b.build().toURL().toString());
     }
 
-    public Mono<String> getAccessToken(String authCode) {
+    public Mono<CustomTokenResponse> getAccessToken(String authCode) {
         Map<String, String> authRequestVariables = new HashMap<>();
         authRequestVariables.put("redirect_uri", REDIRECT_URI);
         authRequestVariables.put("grant_type", "authorization_code");
@@ -95,9 +95,9 @@ public class GlobusClient {
                         .build())
                 .header("Authorization", "Basic " + encode)
                 .retrieve()
-                .bodyToMono(CustomTokenResponse.class)
-                .map(CustomTokenResponse::getAccessToken);
+                .bodyToMono(CustomTokenResponse.class);
     }
+
 
     public Mono<FileList> listFiles(String endPointId, String path, Boolean showHidden, Integer offset, Integer limit, String orderBy,
                                String filter) {
@@ -147,13 +147,14 @@ public class GlobusClient {
 
     }
 
-    public Mono<EndPointList> getEndPointList(String filterScope, String offset, String limit){
+    public Mono<EndPointList> getEndPointList(String filterScope, String offset, String limit, String searchText){
 
         return webClient.get()
                 .uri(builder -> builder.path(ENDPOINT_SEARCH_URI)
                         .queryParam("filter_scope",filterScope)
                         .queryParam("offset",offset)
                         .queryParam("limit",limit)
+                        .queryParam("filter_fulltext", searchText)
                         .build())
                 .retrieve()
                 .bodyToMono(EndPointList.class);
