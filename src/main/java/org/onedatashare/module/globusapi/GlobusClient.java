@@ -17,6 +17,8 @@ import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -36,6 +38,8 @@ public class GlobusClient {
     String TRANSFER_URI = "/transfer";
     //@Value("${submission.uri}")
     String SUBMISSION_URI = "/submission_id";
+    //@Value("${endpoint.activation.uri}")
+    String ENDPOINT_ACTIVATION_URI = "/endpoint/{id}/activate";
     //@Value("${endpoint_search.uri}")
     String ENDPOINT_SEARCH_URI = "/endpoint_search";
     //@Value("${endpoint_detail.uri}")
@@ -135,6 +139,30 @@ public class GlobusClient {
                 .uri(SUBMISSION_URI)
                 .retrieve()
                 .bodyToMono(Result.class);
+    }
+
+    public Mono<ActivationResult> activateEndPoint(String endPointId, String hostName, String serverDN, String userName, String password){
+
+        String uri = ENDPOINT_ACTIVATION_URI.replace("{id}",endPointId);
+
+        ActivationRequirement proxyChainRequirement = new ActivationRequirement("proxy_chain", "delegate_proxy", "Proxy Chain", null, false);
+        ActivationRequirement hostRequirement = new ActivationRequirement("hostname", "myproxy","MyProxy Server", hostName, false);
+        ActivationRequirement userNameRequirement = new ActivationRequirement("username","myproxy", "Username", userName, false);
+        ActivationRequirement passwordRequirement = new ActivationRequirement("passphrase", "myproxy", "Passphrase", password, true);
+        ActivationRequirement serverDNRequirement = new ActivationRequirement("server_dn", "myproxy",  "Server DN", serverDN, false);
+        List<ActivationRequirement> requirementList = new ArrayList<>();
+        requirementList.add(proxyChainRequirement);
+        requirementList.add(hostRequirement);
+        requirementList.add(userNameRequirement);
+        requirementList.add(passwordRequirement);
+        requirementList.add(serverDNRequirement);
+        ActivationRequest activationRequest = new ActivationRequest();
+        activationRequest.setData(requirementList);
+        return webClient.post()
+                .uri(uri)
+                .syncBody(activationRequest)
+                .retrieve()
+                .bodyToMono(ActivationResult.class);
     }
 
     public Mono<EndPoint> getEndPoint(String endPointId){
