@@ -46,6 +46,10 @@ public class GlobusClient {
     String ENDPOINT_DETAIL_URI = "/endpoint/{id}";
     //@Value("${endpoint_file_list.uri}")
     String ENDPOINT_FILE_LIST_URI = "/endpoint/{id}/ls";
+    //@Value("${task_detail.uri}")
+    String TASK_DETAIL_URI = "/task/{id}";
+    //@Value("${task_cancel.uri}")
+    String TASK_CANCEL_URI = "/task/{id}/cancel";
     //@Value("${redirect.uri}")
     String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
     //@Value("${client.id}")
@@ -122,6 +126,24 @@ public class GlobusClient {
         return webClient.post()
                 .uri("/operation/endpoint/" + endpointId + "/mkdir")
                 .syncBody(taskSubmissionRequest)
+                .retrieve()
+                .bodyToMono(Result.class);
+    }
+
+    public Mono<Task> getTaskDetail(String taskId){
+
+        String uri = TASK_DETAIL_URI.replace("{id}", taskId);
+        return webClient.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(Task.class);
+    }
+
+    public Mono<Result> cancelTask(String taskId){
+
+        String uri = TASK_CANCEL_URI.replace("{id}", taskId);
+        return webClient.post()
+                .uri(uri)
                 .retrieve()
                 .bodyToMono(Result.class);
     }
