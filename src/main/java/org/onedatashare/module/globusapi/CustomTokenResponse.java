@@ -30,10 +30,8 @@ public class CustomTokenResponse extends GenericJson {
     private String refreshToken;
     @Key
     private String scope;
-
     @Key("other_tokens")
     private ArrayList<LinkedHashMap> other_token;
-
 
     private Calendar recievedTime;
 

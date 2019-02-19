@@ -5,14 +5,17 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Base64Utils;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import sun.misc.BASE64Encoder;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Base64;
 import java.util.HashMap;
@@ -46,6 +49,8 @@ public class GlobusClient {
     String ENDPOINT_DETAIL_URI = "/endpoint/{id}";
     //@Value("${endpoint_file_list.uri}")
     String ENDPOINT_FILE_LIST_URI = "/endpoint/{id}/ls";
+
+    String ENDPOINT_MKDIR_URI = "/operation/endpoint/{id}/mkdir";
     //@Value("${redirect.uri}")
     String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
     //@Value("${client.id}")
@@ -70,6 +75,7 @@ public class GlobusClient {
                 .baseUrl(TRANSFER_BASE_URL)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE)
                 .defaultHeader("Authorization", "Bearer " + accessToken)
+                .filter(logRequest())
                 .build();
     }
 
@@ -103,9 +109,7 @@ public class GlobusClient {
     }
 
 
-    public Mono<FileList> listFiles(String endPointId, String path, Boolean showHidden, Integer offset, Integer limit, String orderBy,
-                               String filter) {
-
+    public Mono<FileList> listFiles(String endPointId, String path, Boolean showHidden, Integer offset, Integer limit, String orderBy, String filter) {
         String uri = ENDPOINT_FILE_LIST_URI.replace("{id}",endPointId);
         return webClient.get()
                 .uri(builder -> builder.path(uri)
@@ -118,17 +122,37 @@ public class GlobusClient {
                 .bodyToMono(FileList.class);
     }
 
-    public Mono<Result> mkdir(TaskSubmissionRequest taskSubmissionRequest, String endpointId) {
+    public Mono<Result> mkdir(String endpointId, String path) {
+        String uri = ENDPOINT_MKDIR_URI.replace("{id}",endpointId);
+
+        MkdirRequest mkr = new MkdirRequest();
+        mkr.setPath(path);
+        mkr.setDataType("mkdir");
         return webClient.post()
-                .uri("/operation/endpoint/" + endpointId + "/mkdir")
-                .syncBody(taskSubmissionRequest)
+                .uri(uri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept( MediaType.APPLICATION_JSON )
+                .syncBody(mkr)
                 .retrieve()
                 .bodyToMono(Result.class);
     }
 
+     private static ExchangeFilterFunction logRequest() {
+        return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
+            System.out.println("Request: "+ clientRequest.method()+" "+ clientRequest.url());
+            clientRequest.headers().forEach((name, values) -> values.forEach(value -> System.out.println( name+"="+ value)));
+            clientRequest.attributes().forEach((name, values) ->  System.out.println( name+"="+ values));
+            System.out.println(clientRequest.body());
+            return Mono.just(clientRequest);
+        });
+    }
+
+
     public Mono<Result> submitTask(TaskSubmissionRequest taskSubmissionRequest) {
         return webClient.post()
                 .uri("/" + taskSubmissionRequest.getDataType())
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .syncBody(taskSubmissionRequest)
                 .retrieve()
                 .bodyToMono(Result.class);
@@ -144,7 +168,6 @@ public class GlobusClient {
     public Mono<ActivationResult> activateEndPoint(String endPointId, String hostName, String serverDN, String userName, String password){
 
         String uri = ENDPOINT_ACTIVATION_URI.replace("{id}",endPointId);
-
         ActivationRequirement proxyChainRequirement = new ActivationRequirement("proxy_chain", "delegate_proxy", "Proxy Chain", null, false);
         ActivationRequirement hostRequirement = new ActivationRequirement("hostname", "myproxy","MyProxy Server", hostName, false);
         ActivationRequirement userNameRequirement = new ActivationRequirement("username","myproxy", "Username", userName, false);
@@ -172,7 +195,6 @@ public class GlobusClient {
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(EndPoint.class);
-
     }
 
     public Mono<EndPointList> getEndPointList(String filterScope, String offset, String limit, String searchText){
