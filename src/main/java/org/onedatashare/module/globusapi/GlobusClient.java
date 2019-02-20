@@ -46,6 +46,8 @@ public class GlobusClient {
     String ENDPOINT_DETAIL_URI = "/endpoint/{id}";
     //@Value("${endpoint_file_list.uri}")
     String ENDPOINT_FILE_LIST_URI = "/endpoint/{id}/ls";
+    //@Value("${task_list.uri}")
+    String TASK_LIST_URI = "/task_list";
     //@Value("${task_detail.uri}")
     String TASK_DETAIL_URI = "/task/{id}";
     //@Value("${task_cancel.uri}")
@@ -210,5 +212,28 @@ public class GlobusClient {
                 .bodyToMono(EndPointList.class);
     }
 
+    public Mono<TaskList> getTaskList(Map<String, String> filters){
+
+        StringBuilder filterBuilder = new StringBuilder();
+        int noOfFilters = filters.size();
+        int filterCounter = 0;
+        for(Map.Entry<String, String> filterConfig:filters.entrySet()){
+            ++filterCounter;
+            String filterKey = filterConfig.getKey();
+            String filterValue = filterConfig.getValue();
+            filterBuilder.append(filterKey);
+            filterBuilder.append(":");
+            filterBuilder.append(filterValue);
+            if(filterCounter < noOfFilters){
+                filterBuilder.append("/");
+            }
+        }
+        return webClient.get()
+                .uri(builder -> builder.path(TASK_LIST_URI)
+                    .queryParam("filter", filterBuilder.toString())
+                    .build())
+                .retrieve()
+                .bodyToMono(TaskList.class);
+    }
 
 }
