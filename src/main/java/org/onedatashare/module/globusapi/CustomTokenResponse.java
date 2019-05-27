@@ -40,7 +40,7 @@ public class CustomTokenResponse extends GenericJson {
         recievedTime.add(Calendar.SECOND, 172800);
     }
 
-    public final String getAccessToken() {
+    public final String getTransferAccessToken() {
         for(int i = 0; i < other_token.size(); i++){
             if("transfer.api.globus.org".equals(other_token.get(i).get("resource_server"))){
                 return (String)other_token.get(i).get("access_token");

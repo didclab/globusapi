@@ -49,8 +49,13 @@ public class GlobusClient {
     String ENDPOINT_DETAIL_URI = "/endpoint/{id}";
     //@Value("${endpoint_file_list.uri}")
     String ENDPOINT_FILE_LIST_URI = "/endpoint/{id}/ls";
-
     String ENDPOINT_MKDIR_URI = "/operation/endpoint/{id}/mkdir";
+    //@Value("${task_list.uri}")
+    String TASK_LIST_URI = "/task_list";
+    //@Value("${task_detail.uri}")
+    String TASK_DETAIL_URI = "/task/{id}";
+    //@Value("${task_cancel.uri}")
+    String TASK_CANCEL_URI = "/task/{id}/cancel";
     //@Value("${redirect.uri}")
     String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
     //@Value("${client.id}")
@@ -147,6 +152,23 @@ public class GlobusClient {
         });
     }
 
+    public Mono<Task> getTaskDetail(String taskId){
+
+        String uri = TASK_DETAIL_URI.replace("{id}", taskId);
+        return webClient.get()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(Task.class);
+    }
+
+    public Mono<Result> cancelTask(String taskId){
+
+        String uri = TASK_CANCEL_URI.replace("{id}", taskId);
+        return webClient.post()
+                .uri(uri)
+                .retrieve()
+                .bodyToMono(Result.class);
+    }
 
     public Mono<Result> submitTask(TaskSubmissionRequest taskSubmissionRequest) {
         return webClient.post()
@@ -210,5 +232,28 @@ public class GlobusClient {
                 .bodyToMono(EndPointList.class);
     }
 
+    public Mono<TaskList> getTaskList(Map<String, String> filters){
+
+        StringBuilder filterBuilder = new StringBuilder();
+        int noOfFilters = filters.size();
+        int filterCounter = 0;
+        for(Map.Entry<String, String> filterConfig:filters.entrySet()){
+            ++filterCounter;
+            String filterKey = filterConfig.getKey();
+            String filterValue = filterConfig.getValue();
+            filterBuilder.append(filterKey);
+            filterBuilder.append(":");
+            filterBuilder.append(filterValue);
+            if(filterCounter < noOfFilters){
+                filterBuilder.append("/");
+            }
+        }
+        return webClient.get()
+                .uri(builder -> builder.path(TASK_LIST_URI)
+                    .queryParam("filter", filterBuilder.toString())
+                    .build())
+                .retrieve()
+                .bodyToMono(TaskList.class);
+    }
 
 }
