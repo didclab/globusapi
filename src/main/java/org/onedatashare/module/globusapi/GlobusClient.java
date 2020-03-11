@@ -1,9 +1,10 @@
 package org.onedatashare.module.globusapi;
 
 import com.google.api.client.auth.oauth2.TokenResponse;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.utils.URIBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -13,70 +14,91 @@ import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Client to make calls to globus api
+ */
+@Accessors(chain = true)
 public class GlobusClient {
-    private static final String CONTENT_TYPE = "application/json";
-    private final WebClient webClient;
-    @Value("${auth.base.url}")
-    String AUTH_BASE_URL;// = "https://auth.globus.org/v2/oauth2";
-    @Value("$(auth.uri")
-    String AUTH_URI;// = "/authorize";
-    @Value("${token.uri}")
-    String TOKEN_URI;// = "/token";
-    @Value("${transfer.base.url}")
-    String TRANSFER_BASE_URL;// = "https://transfer.api.globusonline.org/v0.10";
-    @Value("$(transfer.uri)")
-    String TRANSFER_URI;// = "/transfer";
-    @Value("${submission.uri}")
-    String SUBMISSION_URI;// = "/submission_id";
-    @Value("${redirect.uri}")
-    String REDIRECT_URI;// = "https://127.0.0.1:8080/api/stork/oauth";
-    @Value("${client.id}")
-    String CLIENT_ID;// = "6843af68-87f8-4341-bfc4-3db4b1e2d845";
-    @Value("${client.secret}")
-    String CLIENT_SECRET;// = "IsqQ6AlvDCi/z5em+D6NJl2cRFq9gFt0jm9GRseQek0=";
-    @Value("${scope}")
-    String SCOPE;// = "urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities offline_access";
-    @Value("$(response.type)")
-    String RESPONSE_TYPE;// = "code";
+
+    static final GlobusConfig globusConfig = GlobusConfig.getInstance();
+
+
+    //These parameters have to be set when the client is created
+    @Setter private String redirectUri;
+    @Setter private String clientId;
+    @Setter private String clientSecret;
+
+    private WebClient webClient;
+
+    //Access token for the user
     private String accessToken;
 
+    /**
+     * Creates a webClient for making requests to globus
+     */
     public GlobusClient() {
         this.webClient = WebClient.builder()
-                .baseUrl(AUTH_BASE_URL)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE)
+                .baseUrl(globusConfig.getAuthBaseUrl())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, globusConfig.getContentType())
                 .build();
     }
 
+    /**
+     * Creates a webclient for making authenticated requests to globus on behalf of the user
+     * @param accessToken
+     */
     public GlobusClient(String accessToken) {
+        this.accessToken = accessToken;
         this.webClient = WebClient.builder()
-                .baseUrl(TRANSFER_BASE_URL)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE)
-                .defaultHeader("Authorization", "Bearer " + accessToken)
+                .baseUrl(globusConfig.getTransferBaseUrl())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, globusConfig.getContentType())
+                .defaultHeader("Authorization", "Bearer " + this.accessToken)
                 .build();
     }
 
-    public Mono<String> generateAuthURL() throws URISyntaxException, MalformedURLException {
+    /**
+     * Returns the oauth endpoint to connect with globus
+     * @return
+     * @throws URISyntaxException
+     * @throws MalformedURLException
+     */
+    public Mono<String> generateOAuthURL() throws URISyntaxException, MalformedURLException {
         String code = RandomStringUtils.random(25, true, true);
-        URIBuilder b = new URIBuilder(AUTH_BASE_URL + AUTH_URI);
-        b.addParameter("client_id", CLIENT_ID);
-        b.addParameter("scope", SCOPE);
+        URIBuilder b = new URIBuilder(globusConfig.getAuthBaseUrl() + globusConfig.getAuthUri());
+        b.addParameter("client_id", clientId);
+        b.addParameter("scope", globusConfig.getScope());
         b.addParameter("response_type", "code");
-        b.addParameter("redirect_uri", REDIRECT_URI);
+        b.addParameter("redirect_uri", redirectUri);
         b.addParameter("state", code);
         return Mono.just(b.build().toURL().toString());
     }
 
+    /**
+     * Fetches the access token from globus
+     * @param authCode
+     * @return
+     */
     public Mono<String> getAccessToken(String authCode) {
         Map<String, String> authRequestVariables = new HashMap<>();
-        authRequestVariables.put("redirect_uri", REDIRECT_URI);
+        authRequestVariables.put("redirect_uri", redirectUri);
         authRequestVariables.put("grant_type", authCode);
         return webClient.get()
-                .uri(TOKEN_URI, authRequestVariables)
+                .uri(globusConfig.getTokenUri(), authRequestVariables)
                 .retrieve()
                 .bodyToMono(TokenResponse.class)
                 .map(TokenResponse::getAccessToken);
     }
 
+    /**
+     * This method lists the folders and files on the given endpoint
+     * @param path
+     * @param showHidden
+     * @param limit
+     * @param offset
+     * @param orderBy
+     * @param filter
+     * @return
+     */
     public Mono<FileList> list(String path, Boolean showHidden, Integer limit, Integer offset, String orderBy,
                                String filter) {
         Map<String, Object> listRequestVariables = new HashMap<>();
@@ -87,11 +109,17 @@ public class GlobusClient {
         listRequestVariables.put("orderby", orderBy);
         listRequestVariables.put("filter", filter);
         return webClient.get()
-                .uri(TRANSFER_URI, listRequestVariables)
+                .uri(globusConfig.getTransferUri(), listRequestVariables)
                 .retrieve()
                 .bodyToMono(FileList.class);
     }
 
+    /**
+     * Creates a new folder at the endpoint
+     * @param taskSubmissionRequest
+     * @param endpointId
+     * @return
+     */
     public Mono<Result> mkdir(TaskSubmissionRequest taskSubmissionRequest, String endpointId) {
         return webClient.post()
                 .uri("/operation/endpoint/" + endpointId + "/mkdir")
@@ -100,6 +128,11 @@ public class GlobusClient {
                 .bodyToMono(Result.class);
     }
 
+    /**
+     * Submits a transfer request to the globus
+     * @param taskSubmissionRequest
+     * @return
+     */
     public Mono<Result> submitTask(TaskSubmissionRequest taskSubmissionRequest) {
         return webClient.post()
                 .uri("/" + taskSubmissionRequest.getDataType())
@@ -108,12 +141,14 @@ public class GlobusClient {
                 .bodyToMono(Result.class);
     }
 
+    /**
+     * Returns the transfer id
+     * @return
+     */
     public Mono<String> getJobSubmissionId() {
         return webClient.get()
-                .uri(SUBMISSION_URI)
+                .uri(globusConfig.getSubmissionUri())
                 .retrieve()
                 .bodyToMono(String.class);
     }
-
-
 }
