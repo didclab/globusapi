@@ -30,7 +30,6 @@ class GlobusConstants{
     public static final String SCOPE = "urn:globus:auth:scope:transfer.api.globus.org:all urn:globus:auth:scope:auth.globus.org:view_identities offline_access";
 }
 
-//@Service
 public class GlobusClient{
     private WebClient webClient;
 
