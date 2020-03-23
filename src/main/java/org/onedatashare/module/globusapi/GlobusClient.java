@@ -1,5 +1,6 @@
 package org.onedatashare.module.globusapi;
 
+import lombok.Setter;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.springframework.http.HttpHeaders;
@@ -37,10 +38,10 @@ class GlobusConstants{
 
 public class GlobusClient {
     private WebClient webClient;
-    private String REDIRECT_URI = "https://127.0.0.1:8443/api/stork/oauth";
-    private String CLIENT_ID = "6843af68-87f8-4341-bfc4-3db4b1e2d845";
-    private String CLIENT_SECRET = "IsqQ6AlvDCi/z5em+D6NJl2cRFq9gFt0jm9GRseQek0=";
-    private String accessToken;
+
+    @Setter private String redirectUri;
+    @Setter private String clientId;
+    @Setter private String clientSecret;
 
     public GlobusClient() {
         this.webClient = WebClient.builder()
@@ -61,24 +62,24 @@ public class GlobusClient {
     public Mono<String> generateAuthURL() throws URISyntaxException, MalformedURLException {
         String code = RandomStringUtils.random(25, true, true);
         URIBuilder b = new URIBuilder(GlobusConstants.AUTH_BASE_URL + GlobusConstants.AUTH_URI);
-        b.addParameter("client_id", CLIENT_ID);
+        b.addParameter("client_id", clientId);
         b.addParameter("scope", GlobusConstants.SCOPE);
         b.addParameter("response_type", "code");
-        b.addParameter("redirect_uri", REDIRECT_URI);
+        b.addParameter("redirect_uri", redirectUri);
         b.addParameter("state", code);
         return Mono.just(b.build().toURL().toString());
     }
 
     public Mono<CustomTokenResponse> getAccessToken(String authCode) {
         Map<String, String> authRequestVariables = new HashMap<>();
-        authRequestVariables.put("redirect_uri", REDIRECT_URI);
+        authRequestVariables.put("redirect_uri", redirectUri);
         authRequestVariables.put("grant_type", "authorization_code");
         authRequestVariables.put("code", authCode);
-        String encode = Base64.getEncoder().encodeToString((CLIENT_ID+":"+CLIENT_SECRET).getBytes());
+        String encode = Base64.getEncoder().encodeToString((clientId +":"+ clientSecret).getBytes());
 
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder.path(GlobusConstants.TOKEN_URI)
-                        .queryParam("redirect_uri", REDIRECT_URI)
+                        .queryParam("redirect_uri", redirectUri)
                         .queryParam("code", authCode)
                         .queryParam("grant_type", "authorization_code")
                         .build())
