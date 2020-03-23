@@ -1,0 +1,8 @@
+#Intellij files
+.idea/
+*.iml
+target/
+
+#Swap files
+*.swp
+
