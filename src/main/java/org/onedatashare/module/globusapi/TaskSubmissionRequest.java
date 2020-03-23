@@ -27,6 +27,8 @@ public class TaskSubmissionRequest {
     private Boolean skipActivationCheck;
     @JsonProperty("deadline")
     private String deadline;
+    @JsonProperty("recursive")
+    private boolean recursive;
     @JsonProperty("source_endpoint")
     private String sourceEndpoint;
     @JsonProperty("destination_endpoint")
